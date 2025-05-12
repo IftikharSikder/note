@@ -1,25 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:get/get_core/src/get_main.dart';
 import 'package:lottie/lottie.dart';
+import 'package:notes/constants/app_colors.dart';
 import 'package:notes/constants/app_images.dart';
 import 'package:notes/constants/app_strings.dart';
 import 'package:notes/constants/spacing.dart';
+import 'package:notes/view_model/initial_screen_viewmodel.dart';
+import 'package:notes/views/login_screen.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
+
+    final initialScreenController = Get.find<InitialScreenViewModel>();
+
+    WidgetsBinding.instance.addPostFrameCallback((_)async{
+      await initialScreenController.setLauncingState();
+    });
+
+    Future.delayed(const Duration(seconds: 4), () {
+      Navigator.push(context, MaterialPageRoute(builder: (context)=>LoginScreen()));
+    });
+
     return Scaffold(
       body: Container(
-        height: Get.height,
-        width: Get.width,
+        height: MediaQuery.of(context).size.height,
+        width: MediaQuery.of(context).size.width,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFFFF3D1), Color(0xFFFFFFFF)],
+            colors: [AppColors.lightYellow, AppColors.white],
           ),
         ),
         child: Column(

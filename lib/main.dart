@@ -2,17 +2,25 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
+import 'package:notes/bindings/initial_bindings.dart';
 import 'package:notes/constants/app_strings.dart';
-import 'package:notes/views/splash_screen.dart';
+import 'package:notes/routes.dart';
+import 'package:notes/view_model/initial_screen_viewmodel.dart';
 
 void main() async {
-  runApp(const MyApp());
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  InitialBindings().dependencies();
+  final initialScreenController = Get.find<InitialScreenViewModel>();
+  await initialScreenController.getInitialScreen();
+  final appRoutes = AppRoutes();
+
+  runApp(MyApp(appRoutes: appRoutes));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final AppRoutes appRoutes;
+  const MyApp({super.key, required this.appRoutes});
 
   @override
   Widget build(BuildContext context) {
@@ -21,13 +29,12 @@ class MyApp extends StatelessWidget {
       minTextAdapt: true,
       splitScreenMode: true,
       builder: (context, child) {
-        return GetMaterialApp(
+        return GetMaterialApp.router(
           debugShowCheckedModeBanner: false,
           title: AppStrings.appName,
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-          ),
-          home: const SplashScreen(),
+          routeInformationParser: appRoutes.routes.routeInformationParser,
+          routeInformationProvider: appRoutes.routes.routeInformationProvider,
+          routerDelegate: appRoutes.routes.routerDelegate,
         );
       },
     );
