@@ -1,76 +1,173 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
-import 'package:notes/constants/app_colors.dart';
 import 'package:notes/constants/app_strings.dart';
+import 'package:notes/controller/note_model.dart';
+import 'package:shared_preferences/shared_preferences.dart'
+    show SharedPreferences;
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final NotesController _notesController = Get.find<NotesController>();
+  bool _isInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeUserData();
+  }
+
+  Future<void> _initializeUserData() async {
+    if (!_isInitialized) {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? email = prefs.getString("userEmail");
+
+      if (email != null && email.isNotEmpty) {
+        _notesController.setUserEmail(email);
+        _isInitialized = true;
+      }
+    }
+  }
+
+  void _logout(BuildContext context) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setBool("isLoggedIn", false);
+    await prefs.remove("userEmail");
+
+    final NotesController notesController = Get.find<NotesController>();
+    notesController.setUserEmail("");
+
+    context.go("/login");
+  }
+
+  @override
   Widget build(BuildContext context) {
-    double safeAreaHeight = MediaQuery.of(context).padding.top;
     return Scaffold(
-      backgroundColor: AppColors.lightBlue,
-      body: SingleChildScrollView(
+      backgroundColor: Color(0xFFF2F5FA),
+      body: SafeArea(
         child: Column(
           children: [
-            SizedBox(height: safeAreaHeight),
             Container(
               width: double.infinity,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF5046e5), Color(0xFF5046e5)],
-                ),
-              ),
+              decoration: BoxDecoration(color: Color(0xFF5046e5)),
               child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12.0,
-                  vertical: 14,
-                ),
-                child: Text(
-                  AppStrings.myNote,
-                  style: TextStyle(
-                    fontSize: 20.sp,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-            SizedBox(height: 20.h),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 10.0),
-              child: SizedBox(
-                child: Column(
+                padding: EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    note(
-                      title: "Efty Shikder",
-                      description: "This is my name",
-                      context: context,
+                    Text(
+                      "My Notes (${_notesController.notes.length})",
+                      style: TextStyle(
+                        fontSize: 22.sp,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
                     ),
-                    note(
-                      title:
-                          "A build operation failed shared_preferences_android:gen erateDe bugUnitTes tConfig shared_preferences_android:generateDebug UnitTestConfig This is my name",
-                      description:
-                          "A build operation failed shared_preferences_android:gen erateDe bugUnitTes tConfig shared_preferences_android:generateDebug UnitTestConfig This is my name",
-                      context: context,
+
+                    IconButton(
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return AlertDialog(
+                              title: Text('Confirm Logout'),
+                              content: Text('Are you sure you want to logout?'),
+                              actions: [
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                  },
+                                  child: Text('Cancel'),
+                                ),
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                    _logout(context);
+                                  },
+                                  child: Text('Logout'),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.red,
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                      icon: Icon(Icons.logout),
+                      color: Colors.white,
                     ),
                   ],
                 ),
               ),
             ),
+
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16.0),
+                child: Obx(() {
+                  if (_notesController.isLoading.value) {
+                    return Center(child: CircularProgressIndicator());
+                  } else if (_notesController.notes.isEmpty) {
+                    return Center(
+                      child: Text(
+                        AppStrings.emptyNotes,
+                        style: TextStyle(fontSize: 16.sp, color: Colors.grey),
+                      ),
+                    );
+                  } else {
+                    return ListView.builder(
+                      padding: EdgeInsets.only(top: 16.0),
+                      itemCount: _notesController.notes.length,
+                      itemBuilder: (context, index) {
+                        final currentNote = _notesController.notes[index];
+                        return Dismissible(
+                          key: Key(currentNote.id),
+                          background: Container(
+                            color: Colors.red,
+                            alignment: Alignment.centerRight,
+                            padding: EdgeInsets.only(right: 20.0),
+                            child: Icon(Icons.delete, color: Colors.white),
+                          ),
+                          onDismissed: (direction) {
+                            _notesController.deleteNote(currentNote.id);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Note deleted'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          },
+                          child: GestureDetector(
+                            onTap: () {},
+                            child: buildNoteCard(
+                              title: currentNote.title,
+                              description: currentNote.description,
+                              context: context,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  }
+                }),
+              ),
+            ),
           ],
         ),
       ),
-
       floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.deepBlue,
+        backgroundColor: Color(0xFF5046e5),
+        elevation: 4,
         shape: CircleBorder(),
-        child: Text(
-          "+",
-          style: TextStyle(color: AppColors.white, fontSize: 30.sp),
-        ),
+        child: Icon(Icons.add, color: Colors.white, size: 32),
         onPressed: () {
           context.push('/addNote');
         },
@@ -79,50 +176,45 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-Widget note({
+Widget buildNoteCard({
   String? title,
   String? description,
   required BuildContext context,
 }) {
   return Card(
-    elevation: 2,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    elevation: 0,
+    margin: EdgeInsets.only(bottom: 16.0),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     child: Container(
-      height: MediaQuery.of(context).size.height / 6,
-      decoration: BoxDecoration(color: Colors.white),
+      padding: EdgeInsets.all(20.0),
       width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Align(
-            alignment: Alignment.topLeft,
-            child: Padding(
-              padding: const EdgeInsets.only(
-                left: 12.0,
-                right: 8,
-                top: 12,
-                bottom: 8,
-              ),
-              child: Text(
-                title.toString(),
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
+          Text(
+            title?.toString() ?? "",
+            style: TextStyle(
+              fontSize: 18.sp,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          Container(
-            height: 40,
-            child: Align(
-              alignment: Alignment.topLeft,
-              child: Padding(
-                padding: const EdgeInsets.only(left: 12.0, bottom: 10.0),
-                child: Text(
-                  description.toString(),
-                  style: TextStyle(overflow: TextOverflow.ellipsis),
-                ),
-              ),
+          SizedBox(height: 10.0),
+          Text(
+            description?.toString() ?? "",
+            style: TextStyle(
+              fontSize: 15.sp,
+              color: Colors.black54,
+              height: 1.3,
             ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),

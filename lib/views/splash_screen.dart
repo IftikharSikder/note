@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:get/get.dart';
 import 'package:get/get_core/src/get_main.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lottie/lottie.dart';
 import 'package:notes/constants/app_colors.dart';
 import 'package:notes/constants/app_images.dart';
 import 'package:notes/constants/app_strings.dart';
 import 'package:notes/constants/spacing.dart';
 import 'package:notes/view_model/initial_screen_viewmodel.dart';
-import 'package:notes/views/login_screen.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
@@ -23,7 +23,8 @@ class SplashScreen extends StatelessWidget {
     });
 
     Future.delayed(const Duration(seconds: 4), () {
-      Navigator.push(context, MaterialPageRoute(builder: (context)=>LoginScreen()));
+      initialScreenController.setLauncingState();
+      context.go('/login');
     });
 
     return Scaffold(

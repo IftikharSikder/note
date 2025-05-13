@@ -24,7 +24,7 @@ class CustomButton extends StatelessWidget {
           ),
         ),
         onPressed: onPressed,
-        child: Text("Sign In", style: TextStyle(color: Colors.white)),
+        child: Text(buttonText, style: TextStyle(color: Colors.white)),
       ),
     );
   }

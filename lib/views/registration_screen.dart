@@ -1,22 +1,45 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:get/get.dart';
 import 'package:go_router/go_router.dart';
 import 'package:notes/constants/app_colors.dart';
 import 'package:notes/constants/app_strings.dart';
 import 'package:notes/constants/spacing.dart';
 import 'package:notes/constants/widgets/custom_button.dart';
+import 'package:notes/constants/widgets/custom_snackbar.dart';
 import 'package:notes/constants/widgets/custom_text_field.dart';
+import 'package:notes/controller/note_model.dart';
+import 'package:notes/services/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-class RegistrationScreen extends StatelessWidget {
-  RegistrationScreen({super.key});
+class RegistrationScreen extends StatefulWidget {
+  const RegistrationScreen({super.key});
 
+  @override
+  State<RegistrationScreen> createState() => _RegistrationScreenState();
+}
+
+class _RegistrationScreenState extends State<RegistrationScreen> {
+  final nameController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final formKey = GlobalKey<FormState>();
+  final AuthService _authService = AuthService();
+  final isLoading = false.obs;
+  bool _passwordVisible = false;
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     double safeAreaHeight = MediaQuery.of(context).padding.top;
+
     return Scaffold(
       backgroundColor: AppColors.lightBlue,
       body: SingleChildScrollView(
@@ -90,8 +113,8 @@ class RegistrationScreen extends StatelessWidget {
                     Spacing.xs,
                     CustomTextField(
                       hintText: AppStrings.enterFullName,
-                      prefixIcon: Icon(Icons.email_outlined),
-                      controller: emailController,
+                      prefixIcon: Icon(Icons.person_outline),
+                      controller: nameController,
                       validator: (value) {
                         if (value!.isEmpty) {
                           return AppStrings.enterFullName;
@@ -127,7 +150,7 @@ class RegistrationScreen extends StatelessWidget {
                     Spacing.xs,
                     customFieldName(name: AppStrings.password),
                     Spacing.xs,
-                    CustomTextField(
+                    TextFormField(
                       controller: passwordController,
                       validator: (value) {
                         if (value!.isEmpty) {
@@ -135,18 +158,78 @@ class RegistrationScreen extends StatelessWidget {
                         }
                         return null;
                       },
-                      hintText: AppStrings.enterYourPassword,
-                      prefixIcon: Icon(Icons.password),
-                      obscureText: true,
+                      decoration: InputDecoration(
+                        hintText: AppStrings.enterYourPassword,
+                        prefixIcon: Icon(Icons.password),
+                        border: OutlineInputBorder(),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _passwordVisible ? Icons.visibility : Icons.visibility_off,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _passwordVisible = !_passwordVisible;
+                            });
+                          },
+                        ),
+                      ),
+                      obscureText: !_passwordVisible,
                     ),
                     Spacing.verticalMedium,
-                    CustomButton(
+                    Obx(() => isLoading.value
+                        ? CircularProgressIndicator()
+                        : CustomButton(
                       buttonText: "Create Account",
-                      onPressed: () {
+                      onPressed: () async {
                         if (formKey.currentState!.validate()) {
-                          context.go("/home");
+                          isLoading.value = true;
+
+                          String status = await _authService.register(
+                            nameController.text,
+                            emailController.text,
+                            passwordController.text,
+                          );
+
+                          isLoading.value = false;
+
+                          if (status == "success") {
+                            if (!Get.isRegistered<NotesController>()) {
+                              Get.put(NotesController());
+                            }
+                            final NotesController notesController = Get.find<NotesController>();
+                            notesController.setUserEmail(emailController.text);
+
+                            SharedPreferences prefs = await SharedPreferences.getInstance();
+                            await prefs.setBool("isLoggedIn", true);
+                            await prefs.setString("userEmail", emailController.text);
+
+                            customSnackbar(
+                              context: context,
+                              title: AppStrings.success,
+                              content: "Registration successful!",
+                              color: Colors.green,
+                            );
+                            Future.delayed(Duration(seconds: 1), () {
+                              context.go("/home");
+                            });
+                          } else if (status == "email_exists") {
+                            customSnackbar(
+                              context: context,
+                              title: "Email Already Exists",
+                              content: "This email is already registered. Please try another one.",
+                              color: Colors.orange,
+                            );
+                          } else {
+                            customSnackbar(
+                              context: context,
+                              title: AppStrings.failed,
+                              content: "Registration failed. Please try again.",
+                              color: Colors.red,
+                            );
+                          }
                         }
                       },
+                    ),
                     ),
                   ],
                 ),

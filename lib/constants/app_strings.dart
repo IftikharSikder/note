@@ -17,6 +17,10 @@ class AppStrings {
   static const String signInText = "Sign In";
   static const String signUpText = "Sign Up";
   static const String newUserSignupMsg = "Dont have an account?";
+  static const String success = "Success";
+  static const String failed = "Failed";
+  static const String loginSuccessMsg = "Login Successfully";
+  static const String loginFailedMsg = "No user found";
 
   //registration
   static const String notes = "Notes";
@@ -34,4 +38,5 @@ class AppStrings {
 
   //add home
   static const String myNote = "My Notes";
+  static const String emptyNotes = "No notes yet! Tap + to add your first note";
 }
